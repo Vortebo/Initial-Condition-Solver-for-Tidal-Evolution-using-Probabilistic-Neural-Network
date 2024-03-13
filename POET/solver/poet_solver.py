@@ -121,12 +121,12 @@ class POET_IC_Solver(object):
         #
         # Change the dimension of the data
         #
-        if X_train.ndim < 2:
-            X_train = X_train.reshape((1, X_train.shape[0]))
-        if y_train.ndim < 2:
-            if y_train.ndim == 0:
-                y_train = np.array([y_train])
-            y_train = y_train.reshape((1, y_train.shape[0]))
+            # if X_train.ndim < 2:
+            #     X_train = X_train.reshape((1, X_train.shape[0]))
+            # if y_train.ndim < 2:
+            #     if y_train.ndim == 0:
+            #         y_train = np.array([y_train])
+            #     y_train = y_train.reshape((1, y_train.shape[0]))
         #
         # Store the data in a CSV file
         #
@@ -159,10 +159,11 @@ class POET_IC_Solver(object):
             new_labels_df.to_csv(path_or_buf=f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz",
                                     index=False, compression='gzip')
 
-        print(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
-        logger.debug(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
+        #print(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
+        #logger.debug(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
 
     def load_data(self):
+        logger = logging.getLogger(__name__)
         #
         # Declare all variables
         #
@@ -200,6 +201,27 @@ class POET_IC_Solver(object):
         data_df = data_df.to_numpy()
         labels_df = labels_df.to_numpy()
 
+        #
+        # Remove NaN values
+        #
+        to_remove = []
+        for i in range(len(data_df)):
+            if np.isnan(data_df[i]).any():
+                logger.debug(f'NaN found in data_df at index {i} '
+                                f'data_df[i] is {data_df[i]} '
+                                f'labels_df[i] is {labels_df[i]}')
+                to_remove.append(i)
+        for i in range(len(labels_df)):
+            if np.isnan(labels_df[i]).any():
+                logger.debug(f'NaN found in labels_df at index {i} '
+                                f'data_df[i] is {data_df[i]} '
+                                f'labels_df[i] is {labels_df[i]}')
+                if i not in to_remove:
+                    to_remove.append(i)
+        logger.debug(f'Indices to remove: {to_remove}')
+        data_df = np.delete(data_df,to_remove,0)
+        labels_df = np.delete(labels_df,to_remove,0)
+
         return data_df, labels_df
 
     def log_loss(self, y_true, y_pred):
@@ -216,11 +238,6 @@ class POET_IC_Solver(object):
         logger = logging.getLogger(__name__)
         
         X_train, y_train = self.load_data()
-        print("DEBUG")
-        print(X_train)
-        print("STILL DEBUG")
-        print(y_train)
-
         #
         # Fit the model using the X_train and y_train
         # Custom loss function used - log loss
@@ -248,8 +265,11 @@ class POET_IC_Solver(object):
         #
         self.model = tf.keras.Sequential([
             tf.keras.layers.Dense(units=tfpl.IndependentNormal.params_size(event_shape),
-                                    input_shape=(features,)),
+                                    input_shape=(features,),
+                                    kernel_initializer=tf.keras.initializers.Ones()),
+                                    #kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.1, stddev=0.05)),
             tfpl.IndependentNormal(event_shape=event_shape)])
+        print('weights: ',self.model.weights)
         self.model.compile(loss=self.log_loss, optimizer=opt)
         self.model.fit(X_train, y_train,
                         epochs=self.epochs,
@@ -262,9 +282,9 @@ class POET_IC_Solver(object):
         self.model.save(f"/{self.path}/poet_output/{self.type}_{self.version}/model.h5")
         logger.debug("The POET_IC_Solver model is fitted!")
         logger.debug("The model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/model.h5 directory!")
-        print(f"\nThe POET_IC_Solver model is fitted!\n"
-                f"\nThe model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/model.h5 "
-                f"directory!\n")
+        #print(f"\nThe POET_IC_Solver model is fitted!\n"
+        #        f"\nThe model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/model.h5 "
+        #        f"directory!\n")
 
     def fit_evaluate(self, X_test=None, y_test=None):
         """
@@ -296,9 +316,6 @@ class POET_IC_Solver(object):
         # Load the training data set
         #
         X_train, y_train = self.load_data()
-        print("DEBUG")
-        print(X_train)
-        print(y_train)
         #
         # Check if the training data set reached the threshold value
         #
@@ -353,26 +370,23 @@ class POET_IC_Solver(object):
         if y_test:
             if y_test.ndim < 2:
                 y_test = y_test.reshape((1, y_test.shape[0]))
+        
+        #
+        # Evaluate the model using the expected variables
+        #
+        if self.features:
+            X_test = X_test[:, self.features]
 
         #
         # Calculate the mean and the std. deviation
         #
         self.y_hat = self.model(X_test).mean()
         self.y_sd = self.model(X_test).stddev()
-        print("DEBUG")
-        print(self.model(X_test))
-        print(X_test)
         #
         # Calculate the lower and the upper bound of the original estimate
         #
-        print("DEBUG")
-        print(f"\nMean of the estimate: {self.y_hat}")
-        print(f"\nStandard deviation of the estimate: {self.y_sd}")
         y_hat_lower = self.y_hat - 2 * self.y_sd
         y_hat_upper = self.y_hat + 2 * self.y_sd
-        print("DEBUG")
-        print(f"\nLower bound of the estimate: {y_hat_lower}")
-        print(f"\nUpper bound of the estimate: {y_hat_upper}")
         #
         # Calculate the accuracy of the model if y_test is provided
         #
@@ -394,30 +408,32 @@ class POET_IC_Solver(object):
         #
         # Store the results as a dictionary
         #
-        data = {"y_hat_lower": y_hat_lower, "y_hat_upper": y_hat_upper,
-                "accuracy": accuracy, "log_ratio": log_ratio,
-                "y_hat": self.y_hat, "y_sd": self.y_sd}
+        #data = {"y_hat_lower": y_hat_lower, "y_hat_upper": y_hat_upper,
+        #        "accuracy": accuracy, "log_ratio": log_ratio,
+        #        "y_hat": self.y_hat, "y_sd": self.y_sd}
         #
         #
         #
-        logger.debug("The POET_IC_Solver model is evaluated!")
-        print(f"\nThe POET_IC_Solver model is evaluated!\n")
+        #logger.debug("The POET_IC_Solver model is evaluated!")
+        #print(f"\nThe POET_IC_Solver model is evaluated!\n")
         #
         # Store the result in -- '/{self.path}/poet_output/{self.type}/' folder
         #
-        with open(f"/{self.path}/poet_output/{self.type}_{self.version}/results.pickle", 'wb') as file:
-            pickle.dump(data, file)
+        #with open(f"/{self.path}/poet_output/{self.type}_{self.version}/results.pickle", 'wb') as file:
+        #    pickle.dump(data, file)
         #
         #
         #
-        logger.debug(f"The results are stored in --{self.path}/poet_output/{self.type}_{self.version}/results.pickle "
-                        f"directory!")
+        #logger.debug(f"The results are stored in --{self.path}/poet_output/{self.type}_{self.version}/results.pickle "
+        #                f"directory!")
         logger.debug(f"\nLower bound of the estimate: {y_hat_lower}"
+                        f"\nMean of the estimate: {self.y_hat}"
                         f"\nUpper bound of the estimate: {y_hat_upper}")
-        print(f"The results are stored in --{self.path}/poet_output/{self.type}_{self.version}/results.pickle "
-                f"directory!\n")
-        print(f"\nLower bound of the estimate: {y_hat_lower}"
-                f"\nUpper bound of the estimate: {y_hat_upper}")
+        #print(f"The results are stored in --{self.path}/poet_output/{self.type}_{self.version}/results.pickle "
+        #        f"directory!\n")
+        #print(f"\nLower bound of the estimate: {y_hat_lower}"
+        #        f"\nMean of the estimate: {self.y_hat}"
+        #        f"\nUpper bound of the estimate: {y_hat_upper}")
 
         return y_hat_lower, y_hat_upper
 
