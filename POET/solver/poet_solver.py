@@ -121,12 +121,12 @@ class POET_IC_Solver(object):
         #
         # Change the dimension of the data
         #
-            # if X_train.ndim < 2:
-            #     X_train = X_train.reshape((1, X_train.shape[0]))
-            # if y_train.ndim < 2:
-            #     if y_train.ndim == 0:
-            #         y_train = np.array([y_train])
-            #     y_train = y_train.reshape((1, y_train.shape[0]))
+        if X_train.ndim < 2:
+            X_train = X_train.reshape((1, X_train.shape[0]))
+        if y_train.ndim < 2:
+            if y_train.ndim == 0:
+                y_train = np.array([y_train])
+            y_train = y_train.reshape((1, y_train.shape[0]))
         #
         # Store the data in a CSV file
         #
@@ -139,16 +139,26 @@ class POET_IC_Solver(object):
         #
         if len(file_list) > 0:
             if "data.csv.gz" in file_list:
-                data_df = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv.gz",
-                                        compression='gzip')
+                try:
+                    data_df = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv.gz",
+                                            compression='gzip')
+                except:
+                    logger.error(f"\nIssue reading 'data.csv.gz' in the folder "
+                                    f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/.\n")
+                    raise
                 new_data_df.columns = data_df.columns
                 data_df = pd.concat([data_df, new_data_df], ignore_index=True)
                 data_df.to_csv(path_or_buf=f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv.gz",
                                 index=False, compression='gzip')
 
             if "label.csv.gz" in file_list:
-                labels_df = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz",
-                                        compression='gzip')
+                try:
+                    labels_df = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz",
+                                            compression='gzip')
+                except:
+                    logger.error(f"\nIssue reading 'label.csv.gz'in the folder "
+                                    f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/.\n")
+                    raise
                 new_labels_df.columns = labels_df.columns
                 labels_df = pd.concat([labels_df, new_labels_df], ignore_index=True)
                 labels_df.to_csv(path_or_buf=f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz",
