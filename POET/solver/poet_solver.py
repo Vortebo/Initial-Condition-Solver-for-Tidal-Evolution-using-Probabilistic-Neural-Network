@@ -138,37 +138,45 @@ class POET_IC_Solver(object):
         #
         # Append data to the dataframe or create a new dataframe
         #
-        if len(file_list) > 0:
-            logger.debug('Length of file_list is: %s', repr(len(file_list)))
-            for part in ['data', 'label']:
+        logger.debug('file_list is: %s', repr(file_list))
+        for part in ['data', 'label']:
+            new_df = new_data_df if part == 'data' else new_labels_df
+            if f"{part}.csv.gz" in file_list:
                 logger.debug('Attempting to update %s.csv.gz', part)
-                if f"{part}.csv.gz" in file_list:
-                    with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv.gz", 'r+b') as f:
-                        logger.debug('Size of file is %s', repr(os.path.getsize(f.name)))
-                        logger.debug('Attempting to lock the file')
-                        fcntl.lockf(f, fcntl.LOCK_EX)
-                        logger.debug('File locked. Attempting to read data.csv.gz')
-                        try:
-                           file_df = pd.read_csv(f, compression='gzip')
-                           logger.debug('File read successfully.')
-                        except:
-                           logger.error(f"\nIssue reading 'data.csv.gz' in the folder "
-                                           f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/.\n")
-                           raise
-                        logger.debug('Doing the part which really should not be a problem.')
-                        new_df = new_data_df if part == 'data' else new_labels_df
-                        new_df.columns = file_df.columns
-                        logger.debug('Existing data: %s', repr(file_df))
-                        logger.debug('Data being added: %s', repr(new_df))
-                        file_df = pd.concat([file_df, new_df], ignore_index=True)
-                        logger.debug('Updated data: %s', repr(file_df))
-                        logger.debug('Updating %s.csv.gz', part)
-                        f.truncate(0)
-                        file_df.to_csv(f, index=False, compression='gzip')
-                        logger.debug('File updated. Attempting to unlock the file')
-                        fcntl.lockf(f, fcntl.LOCK_UN)
-                        logger.debug('File unlocked.')
-                        logger.debug('Now size of file is %s', repr(os.path.getsize(f.name)))
+                with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv.gz", 'r+b') as f:
+                    logger.debug('Size of file is %s', repr(os.path.getsize(f.name)))
+                    logger.debug('Attempting to lock the file')
+                    fcntl.lockf(f, fcntl.LOCK_EX)
+                    logger.debug('File locked. Attempting to read data.csv.gz')
+                    try:
+                        file_df = pd.read_csv(f, compression='gzip')
+                        logger.debug('File read successfully.')
+                    except:
+                        logger.error(f"\nIssue reading 'data.csv.gz' in the folder "
+                                        f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/.\n")
+                        raise
+                    logger.debug('Doing the part which really should not be a problem.')
+                    new_df.columns = file_df.columns
+                    logger.debug('Existing data: %s', repr(file_df))
+                    logger.debug('Data being added: %s', repr(new_df))
+                    file_df = pd.concat([file_df, new_df], ignore_index=True)
+                    logger.debug('Updated data: %s', repr(file_df))
+                    logger.debug('Updating %s.csv.gz', part)
+                    file_df.to_csv(f, index=False, compression='gzip')
+                    logger.debug('File updated. Attempting to unlock the file')
+                    fcntl.lockf(f, fcntl.LOCK_UN)
+                    logger.debug('File unlocked.')
+                    logger.debug('Now size of file is %s', repr(os.path.getsize(f.name)))
+            else:
+                logger.debug('Attempting to create %s.csv.gz', part)
+                with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv.gz", 'xb') as f:
+                    logger.debug('Attempting to lock the file')
+                    fcntl.lockf(f, fcntl.LOCK_EX)
+                    logger.debug('File locked. Attempting to write %s.csv.gz', part)
+                    new_df.to_csv(f, index=False, compression='gzip')
+                    logger.debug('File written successfully. Attempting to unlock the file')
+                    fcntl.lockf(f, fcntl.LOCK_UN)
+                    logger.debug('File unlocked.')
 
             # logger.debug('Attempting to update label.csv.gz')
             # if "label.csv.gz" in file_list:
@@ -194,25 +202,25 @@ class POET_IC_Solver(object):
             #         fcntl.lockf(f, fcntl.LOCK_UN)
             #         logger.debug('File unlocked.')
             #         logger.debug('Now size of file is %s', repr(os.path.getsize(f.name)))
-        else:
-            logger.debug('Attempting to create data.csv.gz')
-            with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv.gz", 'xb') as f:
-                logger.debug('Attempting to lock the file')
-                fcntl.lockf(f, fcntl.LOCK_EX)
-                logger.debug('File locked. Attempting to write data.csv.gz')
-                new_data_df.to_csv(f, index=False, compression='gzip')
-                logger.debug('File written successfully. Attempting to unlock the file')
-                fcntl.lockf(f, fcntl.LOCK_UN)
-                logger.debug('File unlocked.')
-            logger.debug('Attempting to create label.csv.gz')
-            with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz", 'xb') as f:
-                logger.debug('Attempting to lock the file')
-                fcntl.lockf(f, fcntl.LOCK_EX)
-                logger.debug('File locked. Attempting to write label.csv.gz')
-                new_labels_df.to_csv(f, index=False, compression='gzip')
-                logger.debug('File written successfully. Attempting to unlock the file')
-                fcntl.lockf(f, fcntl.LOCK_UN)
-                logger.debug('File unlocked.')
+        # else:
+        #     logger.debug('Attempting to create data.csv.gz')
+        #     with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv.gz", 'xb') as f:
+        #         logger.debug('Attempting to lock the file')
+        #         fcntl.lockf(f, fcntl.LOCK_EX)
+        #         logger.debug('File locked. Attempting to write data.csv.gz')
+        #         new_data_df.to_csv(f, index=False, compression='gzip')
+        #         logger.debug('File written successfully. Attempting to unlock the file')
+        #         fcntl.lockf(f, fcntl.LOCK_UN)
+        #         logger.debug('File unlocked.')
+        #     logger.debug('Attempting to create label.csv.gz')
+        #     with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz", 'xb') as f:
+        #         logger.debug('Attempting to lock the file')
+        #         fcntl.lockf(f, fcntl.LOCK_EX)
+        #         logger.debug('File locked. Attempting to write label.csv.gz')
+        #         new_labels_df.to_csv(f, index=False, compression='gzip')
+        #         logger.debug('File written successfully. Attempting to unlock the file')
+        #         fcntl.lockf(f, fcntl.LOCK_UN)
+        #         logger.debug('File unlocked.')
 
         print(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
         logger.debug(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
