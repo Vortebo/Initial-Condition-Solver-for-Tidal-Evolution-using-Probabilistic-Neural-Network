@@ -144,29 +144,13 @@ class POET_IC_Solver(object):
             if f"{part}.csv" in file_list:
                 logger.debug('Attempting to update %s.csv', part)
                 with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv", 'r+') as f:
-                    logger.debug('Size of file is %s', repr(os.path.getsize(f.name)))
-                    logger.debug('Attempting to lock the file')
+                    logger.debug('Size of file is %s. Attempting to lock file.',repr(os.path.getsize(f.name)))
                     fcntl.lockf(f, fcntl.LOCK_EX)
-                    logger.debug('File locked. Attempting to read data.csv')
-                    try:
-                        file_df = pd.read_csv(f)
-                        logger.debug('File read successfully.')
-                    except:
-                        logger.error(f"\nIssue reading 'data.csv' in the folder "
-                                        f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/.\n")
-                        raise
-                    # logger.debug('Doing the part which really should not be a problem.')
-                    # new_df.columns = file_df.columns
-                    logger.debug('Existing data: %s', repr(file_df))
-                    logger.debug('Data being added: %s', repr(new_df))
-                    # file_df = pd.concat([file_df, new_df], ignore_index=True)
-                    # logger.debug('Updated data: %s', repr(file_df))
-                    # logger.debug('Updating %s.csv', part)
+                    logger.debug('File locked. Data being added: %s', repr(new_df))
                     new_df.to_csv(f, header=False, index=False)
-                    logger.debug('File updated. Attempting to unlock the file')
+                    logger.debug('File updated. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
-                    logger.debug('File unlocked.')
-                    logger.debug('Now size of file is %s', repr(os.path.getsize(f.name)))
+                    logger.debug('File unlocked. New size of file is %s.', repr(os.path.getsize(f.name)))
             else:
                 logger.debug('Attempting to create %s.csv', part)
                 with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv", 'x') as f:
@@ -174,53 +158,9 @@ class POET_IC_Solver(object):
                     fcntl.lockf(f, fcntl.LOCK_EX)
                     logger.debug('File locked. Attempting to write %s.csv', part)
                     new_df.to_csv(f, index=False)
-                    logger.debug('File written successfully. Attempting to unlock the file')
+                    logger.debug('File written successfully. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
                     logger.debug('File unlocked.')
-
-            # logger.debug('Attempting to update label.csv.gz')
-            # if "label.csv.gz" in file_list:
-            #     with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz", 'a+b') as f:
-            #         logger.debug('Size of file is %s', repr(os.path.getsize(f.name)))
-            #         logger.debug('Attempting to lock the file')
-            #         fcntl.lockf(f, fcntl.LOCK_EX)
-            #         #logger.debug('File locked. Attempting to read label.csv.gz')
-            #         #try:
-            #         #    labels_df = pd.read_csv(f, compression='gzip')
-            #         #    logger.debug('File read successfully.')
-            #         #except:
-            #         #    logger.error(f"\nIssue reading 'label.csv.gz'in the folder "
-            #         #                    f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/.\n")
-            #         #    raise
-            #         #logger.debug('Doing the part which really should not be a problem.')
-            #         #new_labels_df.columns = labels_df.columns
-            #         #labels_df = pd.concat([labels_df, new_labels_df], ignore_index=True)
-            #         logger.debug('Labels being added: %s', repr(new_labels_df))
-            #         logger.debug('Updating label.csv.gz')
-            #         new_labels_df.to_csv(f, index=False, mode = 'a', compression='gzip')
-            #         logger.debug('File updated. Attempting to unlock the file')
-            #         fcntl.lockf(f, fcntl.LOCK_UN)
-            #         logger.debug('File unlocked.')
-            #         logger.debug('Now size of file is %s', repr(os.path.getsize(f.name)))
-        # else:
-        #     logger.debug('Attempting to create data.csv.gz')
-        #     with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv.gz", 'xb') as f:
-        #         logger.debug('Attempting to lock the file')
-        #         fcntl.lockf(f, fcntl.LOCK_EX)
-        #         logger.debug('File locked. Attempting to write data.csv.gz')
-        #         new_data_df.to_csv(f, index=False, compression='gzip')
-        #         logger.debug('File written successfully. Attempting to unlock the file')
-        #         fcntl.lockf(f, fcntl.LOCK_UN)
-        #         logger.debug('File unlocked.')
-        #     logger.debug('Attempting to create label.csv.gz')
-        #     with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv.gz", 'xb') as f:
-        #         logger.debug('Attempting to lock the file')
-        #         fcntl.lockf(f, fcntl.LOCK_EX)
-        #         logger.debug('File locked. Attempting to write label.csv.gz')
-        #         new_labels_df.to_csv(f, index=False, compression='gzip')
-        #         logger.debug('File written successfully. Attempting to unlock the file')
-        #         fcntl.lockf(f, fcntl.LOCK_UN)
-        #         logger.debug('File unlocked.')
 
         print(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
         logger.debug(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
