@@ -140,31 +140,36 @@ class POET_IC_Solver(object):
         #
         # Append data to the dataframe or create a new dataframe
         #
+        skipping = False
         logger.debug('file_list is: %s', repr(file_list))
         for part in ['data', 'label']:
-            new_df = new_data_df if part == 'data' else new_labels_df
+            if skipping:
+                continue
+            new_df,mode = (new_data_df,'r+') if part == 'data' else (new_labels_df,'a+')
             if f"{part}.csv" in file_list:
                 logger.debug('Attempting to update %s.csv', part)
-                with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv", 'r+') as f:
+                with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/{part}.csv", mode) as f:
                     logger.debug('Size of file is %s. Attempting to lock file.',repr(os.path.getsize(f.name)))
                     fcntl.lockf(f, fcntl.LOCK_EX)
                     logger.debug('File locked. Data being added: %s', repr(new_df))
-                    logger.debug('Attempting to check for duplicates.')
-                    try:
-                        old_df = pd.read_csv(f, float_precision='round_trip')
-                        matching_rows = pd.merge(old_df, new_df, how='inner')
-                        logger.debug('Matching rows: %s', matching_rows)
-                        if not matching_rows.empty:
-                            logger.debug('Data already exists in %s.csv. Attempting to unlock.', part)
+                    if part == 'data': # We don't need to do this for label because it's allowed to have duplicates
+                        logger.debug('Attempting to check for duplicates.')
+                        try:
+                            old_df = pd.read_csv(f, float_precision='round_trip')
+                            matching_rows = pd.merge(old_df, new_df, how='inner')
+                            logger.debug('Matching rows: %s', matching_rows)
+                            if not matching_rows.empty:
+                                skipping = True
+                                logger.debug('Data already exists in %s.csv. Attempting to unlock.', part)
+                                fcntl.lockf(f, fcntl.LOCK_UN)
+                                logger.debug('File unlocked.')
+                                continue
+                        except:
+                            logger.error('Could not check the file for duplicates. Attempting to unlock.')
                             fcntl.lockf(f, fcntl.LOCK_UN)
-                            logger.debug('File unlocked.')
-                            continue
-                    except:
-                        logger.error('Could not check the file for duplicates. Attempting to unlock.')
-                        fcntl.lockf(f, fcntl.LOCK_UN)
-                        logger.warning('File unlocked. Raising error.')
-                        raise
-                    new_df.to_csv(f, header=False, index=False)
+                            logger.warning('File unlocked. Raising error.')
+                            raise
+                    new_df.to_csv(f, header=False, index=False, mode = 'a')
                     logger.debug('File updated. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
                     logger.debug('File unlocked. New size of file is %s.', repr(os.path.getsize(f.name)))
