@@ -131,9 +131,11 @@ class POET_IC_Solver(object):
         #
         # Store the data in a CSV file
         #
-        new_data_df = pd.DataFrame(X_train)
+        column_names = [f'{i}' for i in range(X_train.shape[1])]
+        column_names = pd.Index(column_names)
+        new_data_df = pd.DataFrame(X_train,columns=column_names)
         new_data_df = new_data_df.astype('float64')
-        new_labels_df = pd.DataFrame(y_train)
+        new_labels_df = pd.DataFrame(y_train,columns=pd.Index(['0']))
         new_labels_df = new_labels_df.astype('float64')
         #
         # Append data to the dataframe or create a new dataframe
@@ -147,6 +149,21 @@ class POET_IC_Solver(object):
                     logger.debug('Size of file is %s. Attempting to lock file.',repr(os.path.getsize(f.name)))
                     fcntl.lockf(f, fcntl.LOCK_EX)
                     logger.debug('File locked. Data being added: %s', repr(new_df))
+                    logger.debug('Attempting to check for duplicates.')
+                    try:
+                        old_df = pd.read_csv(f, float_precision='round_trip')
+                        matching_rows = pd.merge(old_df, new_df, how='inner')
+                        logger.debug('Matching rows: %s', matching_rows)
+                        if not matching_rows.empty:
+                            logger.debug('Data already exists in %s.csv. Attempting to unlock.', part)
+                            fcntl.lockf(f, fcntl.LOCK_UN)
+                            logger.debug('File unlocked.')
+                            continue
+                    except:
+                        logger.error('Could not check the file for duplicates. Attempting to unlock.')
+                        fcntl.lockf(f, fcntl.LOCK_UN)
+                        logger.warning('File unlocked. Raising error.')
+                        raise
                     new_df.to_csv(f, header=False, index=False)
                     logger.debug('File updated. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
@@ -161,6 +178,9 @@ class POET_IC_Solver(object):
                     logger.debug('File written successfully. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
                     logger.debug('File unlocked.')
+        data = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
+        label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
+        assert len(data.iloc[:]) == len(label.iloc[:])
 
         print(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
         logger.debug(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
