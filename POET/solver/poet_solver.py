@@ -260,10 +260,11 @@ class POET_IC_Solver(object):
         print(length)
         return length
     
-    def just_fit(self):
+    def just_fit(self, X_train = None, y_train = None):
         logger = logging.getLogger(__name__)
         
-        X_train, y_train = self.load_data()
+        if X_train is None or y_train is None:
+            X_train, y_train = self.load_data()
         #
         # Fit the model using the X_train and y_train
         # Custom loss function used - log loss
@@ -338,17 +339,6 @@ class POET_IC_Solver(object):
         #
         file_list = list()
         count = 0
-        #
-        # Load the training data set
-        #
-        X_train, y_train = self.load_data()
-        #
-        # Check if the training data set reached the threshold value
-        #
-        if len(y_train) < self.threshold:
-            raise ValueError(f"\nValueError: the training data size (current size - {len(y_train)}) should be greater "
-                             f"than equals to the threshold value--{self.threshold} to begin training!\n")
-        #
         # Verify if the NN model already exist or retrain is True
         #
         if os.path.exists(f'/{self.path}/poet_output/{self.type}_{self.version}'):
@@ -358,7 +348,18 @@ class POET_IC_Solver(object):
         # Create new NN model if "model.h5" doesn't exist or retrain = True
         #
         if "model.h5" not in file_list or self.retrain:
-            self.just_fit()
+            #
+            # Load the training data set
+            #
+            X_train, y_train = self.load_data()
+            #
+            # Check if the training data set reached the threshold value
+            #
+            if len(y_train) < self.threshold:
+                raise ValueError(f"\nValueError: the training data size (current size - {len(y_train)}) should be greater "
+                                f"than equals to the threshold value--{self.threshold} to begin training!\n")
+            #
+            self.just_fit(X_train, y_train)
         #
         # If "model.h5" exists and retrain = False then load the existing NN model
         #
@@ -429,8 +430,8 @@ class POET_IC_Solver(object):
         #
         # Calculate the log ratio - (y_hat_upper/y_hat_lower)
         #
-        with np.errstate(invalid='ignore'):
-            log_ratio = np.nanmean(np.log(y_hat_upper/y_hat_lower))
+        #with np.errstate(invalid='ignore'):
+        #    log_ratio = np.nanmean(np.log(y_hat_upper/y_hat_lower))
         #
         # Store the results as a dictionary
         #
