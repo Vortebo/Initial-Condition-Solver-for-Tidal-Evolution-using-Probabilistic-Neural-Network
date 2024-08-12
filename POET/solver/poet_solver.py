@@ -12,6 +12,9 @@ import tensorflow_probability as tfp
 import logging
 import fcntl
 
+from sklearn.preprocessing import MinMaxScaler
+import joblib
+
 #
 # Set all the parameters
 #
@@ -43,7 +46,7 @@ class POET_IC_Solver(object):
     """
 
     def __init__(self, type=None, path_to_store=None, epochs=500, batch_size=100,
-                 verbose=2, threshold=1000, version=None, retrain=False, features=None):
+                 verbose=2, threshold=1000, version=None, retrain=False, features=None, bin=None, quantile=0.5):
         self.epochs = epochs
         self.verbose = verbose
         self.type = type
@@ -51,11 +54,23 @@ class POET_IC_Solver(object):
         self.version = version
         self.batch_size = batch_size
         self.threshold = threshold
-        self.model = None
+        self.model_auto = None
+        self.model_prob = None
         self.y_hat = None
         self.y_sd = None
         self.retrain = retrain
         self.features = features
+        self.bin = bin
+        self.quantile = quantile
+
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        if gpus:
+            try:
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+            except RuntimeError as e:
+                print(e)
+
         #
         # start logging the output
         #
@@ -187,6 +202,16 @@ class POET_IC_Solver(object):
         label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
         assert len(data.iloc[:]) == len(label.iloc[:])
 
+        #
+        # Find and save the splitpoint
+        #
+        data.columns = column_names
+        read_column = '10' if self.type == '2d_eccentricity' else '5'
+        splitpoint = np.quantile(data[read_column].to_numpy(), self.quantile)
+        splitpoint=np.array([splitpoint])
+        with open(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/splitpoint.npy", 'wb') as f:
+            np.save(f, splitpoint)
+
         print(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
         logger.debug(f"\nThe data is stored in --{self.path}/poet_output/{self.type}_{self.version}/datasets/ folder!\n")
 
@@ -261,57 +286,139 @@ class POET_IC_Solver(object):
         return length
     
     def just_fit(self, X_train = None, y_train = None):
+        def scalar(df_data):
+            mean = np.nanmean(df_data)
+            std = np.nanmax(df_data) - np.nanmin(df_data)
+            scaled_data = (df_data - mean)/std
+            return scaled_data
+        
+        def scale_in(thedataset,col,scalername):
+            scaler_1 = MinMaxScaler(feature_range=(0, 1))
+            result = scaler_1.fit_transform(thedataset[col].to_numpy().reshape(-1,1))
+            joblib.dump(scaler_1, scalername+'.gz')
+            return result
+        
         logger = logging.getLogger(__name__)
         
         if X_train is None or y_train is None:
             X_train, y_train = self.load_data()
-        #
-        # Fit the model using the X_train and y_train
-        # Custom loss function used - log loss
-        # Optimizer - Adam
-        #
-        #
-        # event shape: integer vector Tensor representing the shape
-        # of single draw from this distribution
-        event_shape = 1
-        #
-        # features: number of features from the training sample
-        #
-        features = X_train.shape[1]
-        #
-        # Initialize the Adam optimizer
-        #
-        opt = tf.keras.optimizers.Adam(learning_rate=0.0003)
-        #
-        # Store the training loss for each epoch
-        #
-        csv_logger = tf.keras.callbacks.CSVLogger(f"/{self.path}/poet_output/"
-                                                    f"{self.type}_{self.version}/model_training_log.csv")
-        #
-        # build the model using a independent normal distribution
-        #
-        self.model = tf.keras.Sequential([
-            tf.keras.layers.Dense(units=tfpl.IndependentNormal.params_size(event_shape),
-                                    input_shape=(features,),
-                                    kernel_initializer=tf.keras.initializers.Ones()),
-                                    #kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.1, stddev=0.05)),
-            tfpl.IndependentNormal(event_shape=event_shape)])
-        print('weights: ',self.model.weights)
-        self.model.compile(loss=self.log_loss, optimizer=opt)
-        self.model.fit(X_train, y_train,
-                        epochs=self.epochs,
-                        batch_size=self.batch_size,
-                        verbose=self.verbose,
-                        callbacks=[csv_logger])
-        #
-        # Save the model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
-        #
-        self.model.save(f"/{self.path}/poet_output/{self.type}_{self.version}/model.h5")
-        logger.debug("The POET_IC_Solver model is fitted!")
-        logger.debug("The model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/model.h5 directory!")
-        #print(f"\nThe POET_IC_Solver model is fitted!\n"
-        #        f"\nThe model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/model.h5 "
-        #        f"directory!\n")
+        
+        columns = ['lgQ_min','lgQ_break_period','lgQ_powerlaw','final_age','feh','final_orbital_period','primary_mass','secondary_mass','Rprimary','Rsecondary']
+        if self.type != '1d_period':
+            columns.append('final_eccentricity')
+            if self.type == '2d_eccentricity':
+                columns.append('initial_eccentricity')
+            else:
+                columns.append('initial_orbital_period')
+        else:
+            columns.append('initial_orbital_period')
+        new_data_df = pd.DataFrame(X_train)
+        new_data_df = new_data_df.astype('float64')
+        new_labels_df = pd.DataFrame(y_train)
+        new_labels_df = new_labels_df.astype('float64')
+        dataset_df = pd.concat([new_data_df, new_labels_df], axis=1)
+        dataset_df.columns = columns
+
+        final_column= 'final_orbital_period' if (self.type == '1d_period' or self.type == '2d_period') else 'final_eccentricity'
+        initial_column = [columns[-1]]
+
+        for i in range(2):
+            bin_name = '1' if i == 0 else '2'
+            splitpoint = np.quantile(dataset_df[final_column].to_numpy(), self.quantile)
+            RANGE_START = 0 if i == 0 else splitpoint
+            RANGE_END = splitpoint if i == 0 else 0.8 if self.type == '2d_eccentricity' else 100
+
+            above_low = (dataset_df[final_column]>=RANGE_START)
+            if RANGE_END == 0.8 or RANGE_END == 100:
+                above_high = (dataset_df[final_column]<=RANGE_END)
+            else:
+                above_high = (dataset_df[final_column]<RANGE_END)
+            dataset_df= dataset_df.loc[above_low & above_high]
+            
+            if len(dataset_df[initial_column]) < 1: # Specific column doesn't matter, just needed to choose one
+                raise ValueError('Not enough data in the bin to train the model.')
+
+            """# Normalize the data set - (y - y_mean)/(y_max - y_min)"""
+            for col in dataset_df.columns:
+                if col not in initial_column:
+                    dataset_df[col] = scalar(dataset_df[col].to_numpy())
+                elif col == initial_column[0]:
+                    dataset_df[col] = scale_in(dataset_df,col,
+                                               f"/{self.path}/poet_output/{self.type}_{self.version}/scaler{bin_name}")
+
+            """# Prepare data and label for the auto-encoder"""
+            y = dataset_df[initial_column[0]]
+            X = dataset_df.drop(initial_column[0], axis=1)
+            """# Auto-encoder model"""
+            #
+            # Store the training loss for each epoch
+            #
+            csv_logger = tf.keras.callbacks.CSVLogger(f"/{self.path}/poet_output/"
+                                                        f"{self.type}_{self.version}/auto{bin_name}_training_log.csv")
+            n_inputs = X.shape[1]
+            n_bottleneck = n_inputs
+            # define encoder
+            visible = tf.keras.layers.Input(shape=(n_inputs,))
+            e = tf.keras.layers.Dense(n_inputs*2)(visible)
+            e = tf.keras.layers.BatchNormalization()(e)
+            e = tf.keras.layers.ReLU()(e)
+            # define bottleneck
+            bottleneck = tf.keras.layers.Dense(n_bottleneck)(e)
+            # define decoder
+            d = tf.keras.layers.Dense(n_inputs*2)(bottleneck)
+            d = tf.keras.layers.BatchNormalization()(d)
+            d = tf.keras.layers.ReLU()(d)
+            # output layer
+            output = tf.keras.layers.Dense(n_inputs, activation='linear')(d)
+            # define autoencoder model
+            model = tf.keras.Model(inputs=visible, outputs=output)
+            # compile autoencoder model
+            model.compile(optimizer='adam', loss='mse')
+            # fit the autoencoder model to reconstruct input
+            model.fit(X, y, epochs=500, batch_size=50, verbose=2, validation_split=0.2, callbacks=[csv_logger])
+            """# Extract and train the encoder from the auto-encoder
+            ### The embedded space from the encoder is same as the original dimension of the data. No compression in the feature space.
+            """
+            # define an encoder model (without the decoder)
+            self.model_auto = tf.keras.Model(inputs=visible, outputs=bottleneck)
+            self.model_auto.compile(optimizer='adam', loss='mse')
+            # encode the train data
+            X_train = self.model_auto.predict(X)
+            #
+            # Save autoencoder model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
+            #
+            self.model_auto.save(f"/{self.path}/poet_output/{self.type}_{self.version}/auto{bin_name}.h5")
+            logger.debug(f"auto_model {bin_name} is fitted!")
+            logger.debug(f"The model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/auto{bin_name}.h5 directory!")
+
+            """# Define the probabilistic model"""
+            #
+            # Store the training loss for each epoch
+            #
+            csv_logger = tf.keras.callbacks.CSVLogger(f"/{self.path}/poet_output/"
+                                                        f"{self.type}_{self.version}/model{bin_name}_training_log.csv")
+            event_shape = 1
+            input_shape = X_train.shape[1]
+            self.model_prob = tf.keras.Sequential([
+                    tf.keras.layers.Dense(units=64, input_shape=(input_shape, ), activation='sigmoid'),
+                    tf.keras.layers.Dense(units=32, activation='sigmoid'),
+                    tf.keras.layers.Dense(units=8, input_shape=(input_shape, ), activation='sigmoid'),
+                    tf.keras.layers.Dense(tfpl.IndependentNormal.params_size(event_shape)),
+                    tfpl.IndependentNormal(event_shape)
+            ])
+            self.model_prob.compile(loss=self.log_loss, optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.005))
+            self.model_prob.fit(X_train, y,
+                                epochs=self.epochs,
+                                batch_size=self.batch_size,
+                                verbose=self.verbose,
+                                callbacks=[csv_logger],
+                                validation_split=0.2)
+            #
+            # Save the model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
+            #
+            self.model_prob.save(f"/{self.path}/poet_output/{self.type}_{self.version}/model{bin_name}.h5")
+            logger.debug(f"prob_model {bin_name} is fitted!")
+            logger.debug(f"The model is stored in -- {self.path}/poet_output/{self.type}_{self.version}/model{bin_name}.h5 directory!")
 
     def fit_evaluate(self, X_test=None, y_test=None):
         """
@@ -334,20 +441,28 @@ class POET_IC_Solver(object):
                 - as results.pickle
         """
         logger = logging.getLogger(__name__)
+        def scale_out(model_mean, y_l, y_u,scalername):
+            scaler_1 = joblib.load(scalername+'.gz')
+            model_mean = scaler_1.inverse_transform(model_mean.numpy()).reshape(-1)
+            y_l = scaler_1.inverse_transform(y_l.numpy()).reshape(-1)
+            y_u = scaler_1.inverse_transform(y_u.numpy()).reshape(-1)
+            return model_mean, y_l, y_u
         #
         # Declare all variables
         #
         file_list = list()
         count = 0
-        # Verify if the NN model already exist or retrain is True
+        # Verify if the NN model already exists or retrain is True
         #
         if os.path.exists(f'/{self.path}/poet_output/{self.type}_{self.version}'):
             for file in os.listdir(f'/{self.path}/poet_output/{self.type}_{self.version}'):
                 file_list.append(file)
+                
+        model_to_load = "model"+self.bin+".h5" if self.bin is not None else "model.h5"
         #
         # Create new NN model if "model.h5" doesn't exist or retrain = True
         #
-        if "model.h5" not in file_list or self.retrain:
+        if model_to_load not in file_list or self.retrain:
             #
             # Load the training data set
             #
@@ -365,10 +480,13 @@ class POET_IC_Solver(object):
         #
         else:
             #
-            # Load the stored model from the folder - /{self.path}/poet_output/{self.type}_{self.version}/
+            # Load the stored models from the folder - /{self.path}/poet_output/{self.type}_{self.version}/
             #
-            self.model = tf.keras.models.load_model(f"/{self.path}/poet_output/{self.type}_{self.version}/model.h5",
-                                                    custom_objects={'log_loss': self.log_loss})
+            self.model_auto = tf.keras.models.load_model(f"/{self.path}/poet_output/{self.type}_{self.version}/auto{self.bin}.h5")
+            self.model_auto.compile(optimizer='adam', loss='mse')
+            self.model_prob = tf.keras.models.load_model(f"/{self.path}/poet_output/{self.type}_{self.version}/model{self.bin}.h5",
+                                                    custom_objects={'log_loss': self.log_loss},
+                                                    safe_mode=False)
 
         #
         # Check if the data is a numpy nd-array
@@ -404,16 +522,22 @@ class POET_IC_Solver(object):
         if self.features:
             X_test = X_test[:, self.features]
 
+        # encode the data
+        X_test = self.model_auto.predict(X_test)
+
         #
         # Calculate the mean and the std. deviation
         #
-        self.y_hat = self.model(X_test).mean()
-        self.y_sd = self.model(X_test).stddev()
+        self.y_hat = self.model_prob(X_test).mean()
+        self.y_sd = self.model_prob(X_test).stddev()
         #
         # Calculate the lower and the upper bound of the original estimate
         #
         y_hat_lower = self.y_hat - 2 * self.y_sd
         y_hat_upper = self.y_hat + 2 * self.y_sd
+
+        self.y_hat,y_hat_lower,y_hat_upper = scale_out(self.y_hat,y_hat_lower,y_hat_upper,
+                                                       f"/{self.path}/poet_output/{self.type}_{self.version}/scaler{self.bin}")
         #
         # Calculate the accuracy of the model if y_test is provided
         #
@@ -463,11 +587,6 @@ class POET_IC_Solver(object):
         #        f"\nUpper bound of the estimate: {y_hat_upper}")
 
         return y_hat_lower, y_hat_upper
-
-        #
-        # End of logging
-        #
-        #poet_logging.stop()
 
 
 if __name__ == '__main__':
