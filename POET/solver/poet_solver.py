@@ -2,6 +2,7 @@
 # Import all the dependencies
 #
 import os
+import time
 import random
 import pickle
 import numpy as np
@@ -70,6 +71,14 @@ class POET_IC_Solver(object):
                     tf.config.experimental.set_memory_growth(gpu, True)
             except RuntimeError as e:
                 print(e)
+        print('IMPORTANT ML THREADS')
+        print(tf.config.threading.get_inter_op_parallelism_threads())
+        print(tf.config.threading.get_intra_op_parallelism_threads())
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+        tf.config.threading.set_intra_op_parallelism_threads(1)
+        print(tf.config.threading.get_inter_op_parallelism_threads())
+        print(tf.config.threading.get_intra_op_parallelism_threads())
+
 
         #
         # start logging the output
@@ -198,8 +207,20 @@ class POET_IC_Solver(object):
                     logger.debug('File written successfully. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
                     logger.debug('File unlocked.')
-        data = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
-        label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
+        problem_counter = 0
+        retry = True
+        while retry:
+            logger.debug('Attempt %s to read data.csv and label.csv', problem_counter+1)
+            try:
+                data = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
+                label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
+                retry = False
+            except:
+                if problem_counter == 9:
+                    raise
+            problem_counter += 1
+            time.sleep(60)
+        logger.debug('Data and label read successfully.')
         assert len(data.iloc[:]) == len(label.iloc[:])
 
         #
