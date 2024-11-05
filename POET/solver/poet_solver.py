@@ -48,6 +48,8 @@ class POET_IC_Solver(object):
 
     def __init__(self, type=None, path_to_store=None, epochs=500, batch_size=100,
                  verbose=2, threshold=1000, version=None, retrain=False, features=None, bin=None, quantile=0.5):
+        logger = logging.getLogger(__name__)
+        logger.debug('Beginning init')
         self.epochs = epochs
         self.verbose = verbose
         self.type = type
@@ -70,7 +72,13 @@ class POET_IC_Solver(object):
                 for gpu in gpus:
                     tf.config.experimental.set_memory_growth(gpu, True)
             except RuntimeError as e:
+                print('The following RuntimeError exception is coming from set_memory_growth.')
                 print(e)
+                pass
+            except ValueError as e:
+                print('The following ValueError exception is coming from set_memory_growth.')
+                print(e)
+                pass
         print('IMPORTANT ML THREADS')
         print(tf.config.threading.get_inter_op_parallelism_threads())
         print(tf.config.threading.get_intra_op_parallelism_threads())
@@ -78,7 +86,6 @@ class POET_IC_Solver(object):
         tf.config.threading.set_intra_op_parallelism_threads(1)
         print(tf.config.threading.get_inter_op_parallelism_threads())
         print(tf.config.threading.get_intra_op_parallelism_threads())
-
 
         #
         # start logging the output
@@ -342,6 +349,7 @@ class POET_IC_Solver(object):
 
         final_column= 'final_orbital_period' if (self.type == '1d_period' or self.type == '2d_period') else 'final_eccentricity'
         initial_column = [columns[-1]]
+        logger.debug('Fit setup done.')
 
         for i in range(2):
             bin_name = '1' if i == 0 else '2'
@@ -367,44 +375,64 @@ class POET_IC_Solver(object):
                     dataset_df[col] = scale_in(dataset_df,col,
                                                f"/{self.path}/poet_output/{self.type}_{self.version}/scaler{bin_name}")
 
+            logger.debug('About to prepare.')
             """# Prepare data and label for the auto-encoder"""
             y = dataset_df[initial_column[0]]
             X = dataset_df.drop(initial_column[0], axis=1)
+            logger.debug('Prepared.')
             """# Auto-encoder model"""
             #
             # Store the training loss for each epoch
             #
             csv_logger = tf.keras.callbacks.CSVLogger(f"/{self.path}/poet_output/"
                                                         f"{self.type}_{self.version}/auto{bin_name}_training_log.csv")
+            logger.debug('logger made')
             n_inputs = X.shape[1]
+            logger.debug('inputs shaped')
             n_bottleneck = n_inputs
+            logger.debug('bottleneck bottled')
             # define encoder
             visible = tf.keras.layers.Input(shape=(n_inputs,))
+            logger.debug('inputs visified')
             e = tf.keras.layers.Dense(n_inputs*2)(visible)
+            logger.debug('dense')
             e = tf.keras.layers.BatchNormalization()(e)
+            logger.debug('normal')
             e = tf.keras.layers.ReLU()(e)
+            logger.debug('reluded')
             # define bottleneck
             bottleneck = tf.keras.layers.Dense(n_bottleneck)(e)
+            logger.debug('bottleneck defined')
             # define decoder
             d = tf.keras.layers.Dense(n_inputs*2)(bottleneck)
+            logger.debug('dense bottleneck decoder')
             d = tf.keras.layers.BatchNormalization()(d)
+            logger.debug('ur such a batch')
             d = tf.keras.layers.ReLU()(d)
+            logger.debug('relulu')
             # output layer
             output = tf.keras.layers.Dense(n_inputs, activation='linear')(d)
+            logger.debug('output layer')
             # define autoencoder model
             model = tf.keras.Model(inputs=visible, outputs=output)
+            logger.debug('AE model made.')
             # compile autoencoder model
             model.compile(optimizer='adam', loss='mse')
+            logger.debug('Compiled.')
             # fit the autoencoder model to reconstruct input
             model.fit(X, y, epochs=500, batch_size=50, verbose=2, validation_split=0.2, callbacks=[csv_logger])
+            logger.debug('Fit.')
             """# Extract and train the encoder from the auto-encoder
             ### The embedded space from the encoder is same as the original dimension of the data. No compression in the feature space.
             """
             # define an encoder model (without the decoder)
             self.model_auto = tf.keras.Model(inputs=visible, outputs=bottleneck)
+            logger.debug('E model made.')
             self.model_auto.compile(optimizer='adam', loss='mse')
+            logger.debug('Compiled.')
             # encode the train data
             X_train = self.model_auto.predict(X)
+            logger.debug('Encoded.')
             #
             # Save autoencoder model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
             #
@@ -427,13 +455,16 @@ class POET_IC_Solver(object):
                     tf.keras.layers.Dense(tfpl.IndependentNormal.params_size(event_shape)),
                     tfpl.IndependentNormal(event_shape)
             ])
+            logger.debug('Prob mod made.')
             self.model_prob.compile(loss=self.log_loss, optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.005))
+            logger.debug('Compiled.')
             self.model_prob.fit(X_train, y,
                                 epochs=self.epochs,
                                 batch_size=self.batch_size,
                                 verbose=self.verbose,
                                 callbacks=[csv_logger],
                                 validation_split=0.2)
+            logger.debug('Fit.')
             #
             # Save the model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
             #
@@ -462,6 +493,7 @@ class POET_IC_Solver(object):
                 - as results.pickle
         """
         logger = logging.getLogger(__name__)
+        logger.debug('Beginning fit_evaluate')
         def scale_out(model_mean, y_l, y_u,scalername):
             scaler_1 = joblib.load(scalername+'.gz')
             model_mean = scaler_1.inverse_transform(model_mean.numpy()).reshape(-1)
@@ -484,6 +516,7 @@ class POET_IC_Solver(object):
         # Create new NN model if "model.h5" doesn't exist or retrain = True
         #
         if model_to_load not in file_list or self.retrain:
+            logger.debug('Model to load is not in file list or we are retraining.')
             #
             # Load the training data set
             #
@@ -495,19 +528,24 @@ class POET_IC_Solver(object):
                 raise ValueError(f"\nValueError: the training data size (current size - {len(y_train)}) should be greater "
                                 f"than equals to the threshold value--{self.threshold} to begin training!\n")
             #
+            logger.debug('Starting fit.')
             self.just_fit(X_train, y_train)
         #
         # If "model.h5" exists and retrain = False then load the existing NN model
         #
         else:
+            logger.debug('We are just loading an existing model.')
             #
             # Load the stored models from the folder - /{self.path}/poet_output/{self.type}_{self.version}/
             #
             self.model_auto = tf.keras.models.load_model(f"/{self.path}/poet_output/{self.type}_{self.version}/auto{self.bin}.h5")
+            logger.debug('Loaded a model.')
             self.model_auto.compile(optimizer='adam', loss='mse')
+            logger.debug('Compiled the model.')
             self.model_prob = tf.keras.models.load_model(f"/{self.path}/poet_output/{self.type}_{self.version}/model{self.bin}.h5",
                                                     custom_objects={'log_loss': self.log_loss},
                                                     safe_mode=False)
+            logger.debug('Loaded another model.')
 
         #
         # Check if the data is a numpy nd-array
@@ -545,12 +583,15 @@ class POET_IC_Solver(object):
 
         # encode the data
         X_test = self.model_auto.predict(X_test)
+        logger.debug('Data encoded.')
 
         #
         # Calculate the mean and the std. deviation
         #
         self.y_hat = self.model_prob(X_test).mean()
+        logger.debug('Got mean.')
         self.y_sd = self.model_prob(X_test).stddev()
+        logger.debug('Got stddev.')
         #
         # Calculate the lower and the upper bound of the original estimate
         #
@@ -559,6 +600,7 @@ class POET_IC_Solver(object):
 
         self.y_hat,y_hat_lower,y_hat_upper = scale_out(self.y_hat,y_hat_lower,y_hat_upper,
                                                        f"/{self.path}/poet_output/{self.type}_{self.version}/scaler{self.bin}")
+        logger.debug('Scaled out.')
         #
         # Calculate the accuracy of the model if y_test is provided
         #
