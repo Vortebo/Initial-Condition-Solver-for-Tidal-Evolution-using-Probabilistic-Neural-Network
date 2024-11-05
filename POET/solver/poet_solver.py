@@ -216,10 +216,10 @@ class POET_IC_Solver(object):
                 label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
                 retry = False
             except:
+                problem_counter += 1
                 if problem_counter == 9:
                     raise
-            problem_counter += 1
-            time.sleep(60)
+                time.sleep(60)
         logger.debug('Data and label read successfully.')
         assert len(data.iloc[:]) == len(label.iloc[:])
 
