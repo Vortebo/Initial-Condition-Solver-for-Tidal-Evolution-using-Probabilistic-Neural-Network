@@ -95,6 +95,27 @@ class POET_IC_Solver(object):
         if not os.path.exists(f'/{self.path}/poet_output/{self.type}_{self.version}'):
             os.makedirs(f'/{self.path}/poet_output/{self.type}_{self.version}')
 
+    def check_alignment(self):
+        logger = logging.getLogger(__name__)
+        problem_counter = 0
+        retry = True
+        while retry:
+            logger.debug('Attempt %s to read data.csv and label.csv', problem_counter+1)
+            try:
+                data = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
+                label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
+                retry = False
+            except:
+                problem_counter += 1
+                if problem_counter == 9:
+                    raise
+                time.sleep(60)
+        logger.debug('Data and label read successfully.')
+        logger.debug('Length of data: %s', len(data.iloc[:]))
+        logger.debug('Length of label: %s', len(label.iloc[:]))
+        alignment_check = len(data.iloc[:]) == len(label.iloc[:])
+        return alignment_check, data, label
+
     def store_data(self, X_train=None, y_train=None):
         """
         Parameters
@@ -163,6 +184,10 @@ class POET_IC_Solver(object):
         #
         # Append data to the dataframe or create a new dataframe
         #
+        alignment_check, _, _ = self.check_alignment()
+        if not alignment_check:
+            logger.error(f'Data and label have different lengths for {self.type}_{self.version}!')
+            return
         skipping = False
         logger.debug('file_list is: %s', repr(file_list))
         for part in ['data', 'label']:
@@ -206,21 +231,10 @@ class POET_IC_Solver(object):
                     logger.debug('File written successfully. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
                     logger.debug('File unlocked.')
-        problem_counter = 0
-        retry = True
-        while retry:
-            logger.debug('Attempt %s to read data.csv and label.csv', problem_counter+1)
-            try:
-                data = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
-                label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
-                retry = False
-            except:
-                problem_counter += 1
-                if problem_counter == 9:
-                    raise
-                time.sleep(60)
-        logger.debug('Data and label read successfully.')
-        assert len(data.iloc[:]) == len(label.iloc[:])
+        alignment_check, data, _ = self.check_alignment()
+        if not alignment_check:
+            logger.error('Somehow we caused data and label to have different lengths!')
+            return
 
         #
         # Find and save the splitpoint
