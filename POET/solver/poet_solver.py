@@ -233,7 +233,7 @@ class POET_IC_Solver(object):
                     logger.debug('File unlocked.')
         alignment_check, data, _ = self.check_alignment()
         if not alignment_check:
-            logger.error('Somehow we caused data and label to have different lengths!')
+            logger.error('Somehow we just caused data and label to have different lengths for {self.type}_{self.version}!')
             return
 
         #
@@ -557,6 +557,7 @@ class POET_IC_Solver(object):
             X_test = X_test[:, self.features]
 
         # encode the data
+        X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
         X_test = self.model_auto.predict(X_test)
 
         #
