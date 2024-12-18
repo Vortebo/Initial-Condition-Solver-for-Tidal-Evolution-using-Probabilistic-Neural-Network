@@ -417,7 +417,7 @@ class POET_IC_Solver(object):
             self.model_auto = tf.keras.Model(inputs=visible, outputs=bottleneck)
             self.model_auto.compile(optimizer='adam', loss='mse')
             # encode the train data
-            X_train = self.model_auto.predict(X)
+            X_train = self.model_auto(X)
             #
             # Save autoencoder model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
             #
@@ -558,7 +558,7 @@ class POET_IC_Solver(object):
 
         # encode the data
         X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
-        X_test = self.model_auto.predict(X_test)
+        X_test = self.model_auto(X_test)
 
         #
         # Calculate the mean and the std. deviation
