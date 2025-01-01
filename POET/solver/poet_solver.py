@@ -95,6 +95,11 @@ class POET_IC_Solver(object):
         if not os.path.exists(f'/{self.path}/poet_output/{self.type}_{self.version}'):
             os.makedirs(f'/{self.path}/poet_output/{self.type}_{self.version}')
 
+    def _read_csv_notimestamp(self, path, float_precision=None):
+        if float_precision is not None:
+            return pd.read_csv(path, float_precision=float_precision)
+        return pd.read_csv(path)
+
     def check_alignment(self):
         logger = logging.getLogger(__name__)
         problem_counter = 0
@@ -102,8 +107,8 @@ class POET_IC_Solver(object):
         while retry:
             logger.debug('Attempt %s to read data.csv and label.csv', problem_counter+1)
             try:
-                data = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
-                label = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
+                data = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
+                label = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
                 retry = False
             except:
                 problem_counter += 1
@@ -203,7 +208,7 @@ class POET_IC_Solver(object):
                     if part == 'data': # We don't need to do this for label because it's allowed to have duplicates
                         logger.debug('Attempting to check for duplicates.')
                         try:
-                            old_df = pd.read_csv(f, float_precision='round_trip')
+                            old_df = self._read_csv_notimestamp(f, float_precision='round_trip')
                             matching_rows = pd.merge(old_df, new_df, how='inner')
                             logger.debug('Matching rows: %s', matching_rows)
                             if not matching_rows.empty:
@@ -273,8 +278,8 @@ class POET_IC_Solver(object):
         #
         # Load the data
         #
-        data_df = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv")
-        labels_df = pd.read_csv(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv")
+        data_df = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv")
+        labels_df = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv")
         #
         # Train using specified list of features
         #
@@ -417,7 +422,7 @@ class POET_IC_Solver(object):
             self.model_auto = tf.keras.Model(inputs=visible, outputs=bottleneck)
             self.model_auto.compile(optimizer='adam', loss='mse')
             # encode the train data
-            X_train = self.model_auto(X)
+            X_train = self.model_auto(np.array(X))
             #
             # Save autoencoder model (model.h5) under the folder - {self.path}/poet_output/{self.type}_{self.version}/
             #
