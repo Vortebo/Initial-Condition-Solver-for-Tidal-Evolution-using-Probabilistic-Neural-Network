@@ -95,10 +95,17 @@ class POET_IC_Solver(object):
         if not os.path.exists(f'/{self.path}/poet_output/{self.type}_{self.version}'):
             os.makedirs(f'/{self.path}/poet_output/{self.type}_{self.version}')
 
-    def _read_csv_notimestamp(self, path, float_precision=None):
-        if float_precision is not None:
-            return pd.read_csv(path, float_precision=float_precision)
-        return pd.read_csv(path)
+    def _read_csv_notimestamp(self, path, float_precision=None, ioObject=None):
+        if float_precision is not None and ioObject is None:
+            loaded_csv = pd.read_csv(path, float_precision=float_precision)
+        elif float_precision is not None and ioObject is not None:
+            loaded_csv = pd.read_csv(ioObject, float_precision=float_precision)
+        else:
+            loaded_csv = pd.read_csv(path)
+
+        result = loaded_csv.drop(loaded_csv.columns[-1], axis=1)
+    
+        return result
 
     def check_alignment(self):
         logger = logging.getLogger(__name__)
@@ -116,9 +123,11 @@ class POET_IC_Solver(object):
                     raise
                 time.sleep(60)
         logger.debug('Data and label read successfully.')
-        logger.debug('Length of data: %s', len(data.iloc[:]))
-        logger.debug('Length of label: %s', len(label.iloc[:]))
-        alignment_check = len(data.iloc[:]) == len(label.iloc[:])
+        data_length = len(data.iloc[:])
+        label_length = len(label.iloc[:])
+        logger.debug('Length of data: %s', data_length)
+        logger.debug('Length of label: %s', label_length)
+        alignment_check = data_length == label_length
         return alignment_check, data, label
 
     def store_data(self, X_train=None, y_train=None):
@@ -195,6 +204,7 @@ class POET_IC_Solver(object):
             return
         skipping = False
         logger.debug('file_list is: %s', repr(file_list))
+        current_time = time.time()
         for part in ['data', 'label']:
             if skipping:
                 continue
@@ -208,7 +218,7 @@ class POET_IC_Solver(object):
                     if part == 'data': # We don't need to do this for label because it's allowed to have duplicates
                         logger.debug('Attempting to check for duplicates.')
                         try:
-                            old_df = self._read_csv_notimestamp(f, float_precision='round_trip')
+                            old_df = self._read_csv_notimestamp(f.name, float_precision='round_trip', ioObject=f)
                             matching_rows = pd.merge(old_df, new_df, how='inner')
                             logger.debug('Matching rows: %s', matching_rows)
                             if not matching_rows.empty:
@@ -222,6 +232,7 @@ class POET_IC_Solver(object):
                             fcntl.lockf(f, fcntl.LOCK_UN)
                             logger.warning('File unlocked. Raising error.')
                             raise
+                    new_df['time'] = current_time
                     new_df.to_csv(f, header=False, index=False, mode = 'a')
                     logger.debug('File updated. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
