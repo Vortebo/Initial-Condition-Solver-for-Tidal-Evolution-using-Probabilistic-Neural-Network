@@ -204,7 +204,7 @@ class POET_IC_Solver(object):
             return
         skipping = False
         logger.debug('file_list is: %s', repr(file_list))
-        current_time = time.time()
+        current_time = 0.0
         for part in ['data', 'label']:
             if skipping:
                 continue
@@ -215,8 +215,9 @@ class POET_IC_Solver(object):
                     logger.debug('Size of file is %s. Attempting to lock file.',repr(os.path.getsize(f.name)))
                     fcntl.lockf(f, fcntl.LOCK_EX)
                     logger.debug('File locked. Data being added: %s', repr(new_df))
-                    if part == 'data': # We don't need to do this for label because it's allowed to have duplicates
-                        logger.debug('Attempting to check for duplicates.')
+                    if part == 'data':
+                        current_time = time.time() # Should only happen once, after getting the lock
+                        logger.debug('Attempting to check for duplicates.') # Label is allowed to have duplicates
                         try:
                             old_df = self._read_csv_notimestamp(f.name, float_precision='round_trip', ioObject=f)
                             matching_rows = pd.merge(old_df, new_df, how='inner')
@@ -243,6 +244,9 @@ class POET_IC_Solver(object):
                     logger.debug('Attempting to lock the file')
                     fcntl.lockf(f, fcntl.LOCK_EX)
                     logger.debug('File locked. Attempting to write %s.csv', part)
+                    if part == 'data':
+                        current_time = time.time()
+                    new_df['time'] = current_time
                     new_df.to_csv(f, index=False)
                     logger.debug('File written successfully. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
