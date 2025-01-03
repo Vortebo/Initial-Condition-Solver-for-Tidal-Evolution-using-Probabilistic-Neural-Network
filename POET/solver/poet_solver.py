@@ -201,7 +201,7 @@ class POET_IC_Solver(object):
         alignment_check, _, _ = self.check_alignment()
         if not alignment_check:
             logger.error(f'Data and label have different lengths for {self.type}_{self.version}!')
-            return
+            # return
         skipping = False
         logger.debug('file_list is: %s', repr(file_list))
         current_time = 0.0
