@@ -107,7 +107,7 @@ class POET_IC_Solver(object):
     
         return result
 
-    def check_alignment(self):
+    def check_alignment(self,report_misalignment):
         logger = logging.getLogger(__name__)
         problem_counter = 0
         retry = True
@@ -128,6 +128,8 @@ class POET_IC_Solver(object):
         logger.debug('Length of data: %s', data_length)
         logger.debug('Length of label: %s', label_length)
         alignment_check = data_length == label_length
+        if not alignment_check and report_misalignment:
+            logger.error('Data and label now have different lengths for {self.type}_{self.version}!')
         return alignment_check, data, label
 
     def store_data(self, X_train=None, y_train=None):
@@ -199,8 +201,8 @@ class POET_IC_Solver(object):
         # Append data to the dataframe or create a new dataframe
         #
         alignment_check, _, _ = self.check_alignment()
-        if not alignment_check:
-            logger.error(f'Data and label have different lengths for {self.type}_{self.version}!')
+        # if not alignment_check:
+        #     logger.error(f'Data and label have different lengths for {self.type}_{self.version}!')
             # return
         skipping = False
         logger.debug('file_list is: %s', repr(file_list))
@@ -251,10 +253,10 @@ class POET_IC_Solver(object):
                     logger.debug('File written successfully. Attempting to unlock.')
                     fcntl.lockf(f, fcntl.LOCK_UN)
                     logger.debug('File unlocked.')
-        alignment_check, data, _ = self.check_alignment()
-        if not alignment_check:
-            logger.error('Somehow we just caused data and label to have different lengths for {self.type}_{self.version}!')
-            return
+        _, data, _ = self.check_alignment(alignment_check)
+        # if not alignment_check:
+        #     logger.error('Somehow we just caused data and label to have different lengths for {self.type}_{self.version}!')
+        #     return
 
         #
         # Find and save the splitpoint
