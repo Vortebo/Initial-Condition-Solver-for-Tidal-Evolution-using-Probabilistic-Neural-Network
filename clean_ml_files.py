@@ -20,6 +20,8 @@ def clean_file(systemname,systempath):
 
         data_path = f'/{systempath}/poet_output/{version}_{systemname}/datasets/data.csv'
         label_path = f'/{systempath}/poet_output/{version}_{systemname}/datasets/label.csv'
+        old_data_path = f'/{systempath}/{previousversionpath}/{version}_{systemname}/datasets/data.csv'
+        old_label_path = f'/{systempath}/{previousversionpath}/{version}_{systemname}/datasets/label.csv'
         
         if not os.path.exists(data_path) or not os.path.exists(label_path):
             logger.warning(f'No data or label file for {version}_{systemname}')
@@ -27,6 +29,16 @@ def clean_file(systemname,systempath):
             continue
         current_data = pd.read_csv(data_path, float_precision='round_trip')
         current_label = pd.read_csv(label_path, float_precision='round_trip')
+
+        old_data = pd.read_csv(old_data_path, float_precision='round_trip')
+        old_label = pd.read_csv(old_label_path, float_precision='round_trip')
+        old_data_lines = len(old_data.iloc[:])
+        old_label_lines = len(old_label.iloc[:])
+        skiptoline = old_data_lines
+        if old_data_lines != old_label_lines:
+            logger.error(f'Error: old data and label lengths do not match for {version}_{systemname}')
+            print(f'Error: old data and label lengths do not match for {version}_{systemname}')
+            skiptoline = min(old_data_lines,old_label_lines)
 
         data_length = len(current_data.iloc[:])
         label_length = len(current_label.iloc[:])
@@ -45,7 +57,7 @@ def clean_file(systemname,systempath):
         unpaired_label = 0
         paired_data = list()
         paired_label = list()
-        for i in range(data_length):
+        for i in range(skiptoline,data_length):
             if current_data['time'][i] == current_label['time'][i]:
                 new_data = new_data._append(current_data.iloc[i])
                 new_label = new_label._append(current_label.iloc[i])
@@ -90,6 +102,10 @@ def clean_file(systemname,systempath):
         print(f'Paired matches: {paired_matchs}')
         print(f'Unpaired data: {unpaired_data}')
         print(f'Unpaired label: {unpaired_label}')
+
+        if skiptoline != 0:
+            new_data = pd.concat([old_data,new_data],ignore_index=True)
+            new_label = pd.concat([old_label,new_label],ignore_index=True)
         
         new_data.to_csv(data_path, index=False, mode='w')
         new_label.to_csv(label_path, index=False, mode='w')
