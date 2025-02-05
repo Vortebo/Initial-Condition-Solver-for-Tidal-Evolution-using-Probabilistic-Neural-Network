@@ -200,7 +200,7 @@ class POET_IC_Solver(object):
         #
         # Append data to the dataframe or create a new dataframe
         #
-        alignment_check, _, _ = self.check_alignment()
+        alignment_check, _, _ = self.check_alignment(False)
         # if not alignment_check:
         #     logger.error(f'Data and label have different lengths for {self.type}_{self.version}!')
             # return
