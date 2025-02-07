@@ -49,6 +49,11 @@ def clean_file(systemname,systempath):
             current_label = current_label.iloc[:new_length]
             data_length = new_length
 
+        if skiptoline == data_length:
+            logger.debug(f'No new data to sort for {version}_{systemname}')
+            print(f'No new data to sort for {version}_{systemname}')
+            continue
+
         new_data = pd.DataFrame()
         new_label = pd.DataFrame()
 
@@ -57,6 +62,8 @@ def clean_file(systemname,systempath):
         unpaired_label = 0
         paired_data = list()
         paired_label = list()
+        logger.debug('Beginning sort')
+        print('Beginning sort')
         for i in range(skiptoline,data_length):
             if current_data['time'][i] == current_label['time'][i]:
                 new_data = new_data._append(current_data.iloc[i])
