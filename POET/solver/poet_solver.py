@@ -112,7 +112,7 @@ class POET_IC_Solver(object):
         problem_counter = 0
         retry = True
         while retry:
-            logger.debug('Attempt %s to read data.csv and label.csv', problem_counter+1)
+            logger.debug('Attempt %s to read %s %s data.csv and label.csv', problem_counter+1, self.type, self.version)
             try:
                 data = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
                 label = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
