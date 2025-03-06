@@ -121,7 +121,7 @@ class POET_IC_Solver(object):
                 problem_counter += 1
                 if problem_counter == 9:
                     raise
-                time.sleep(60)
+                time.sleep(120)
         logger.debug('Data and label read successfully.')
         data_length = len(data.iloc[:])
         label_length = len(label.iloc[:])
