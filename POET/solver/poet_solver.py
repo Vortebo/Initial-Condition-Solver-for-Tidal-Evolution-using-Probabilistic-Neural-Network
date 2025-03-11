@@ -96,12 +96,25 @@ class POET_IC_Solver(object):
             os.makedirs(f'/{self.path}/poet_output/{self.type}_{self.version}')
 
     def _read_csv_notimestamp(self, path, float_precision=None, ioObject=None):
-        if float_precision is not None and ioObject is None:
-            loaded_csv = pd.read_csv(path, float_precision=float_precision)
-        elif float_precision is not None and ioObject is not None:
-            loaded_csv = pd.read_csv(ioObject, float_precision=float_precision)
-        else:
-            loaded_csv = pd.read_csv(path)
+        logger = logging.getLogger(__name__)
+        problem_counter = 0
+        retry = True
+        while retry:
+            logger.debug('Attempt %s', problem_counter+1)
+            try:
+                if float_precision is not None and ioObject is None:
+                    loaded_csv = pd.read_csv(path, float_precision=float_precision)
+                elif float_precision is not None and ioObject is not None:
+                    loaded_csv = pd.read_csv(ioObject, float_precision=float_precision)
+                else:
+                    loaded_csv = pd.read_csv(path)
+                retry = False
+            except Exception as e:
+                logger.error('Could not read the file. Error: %s', e)
+                problem_counter += 1
+                if problem_counter == 9:
+                    raise
+                time.sleep(120)
 
         result = loaded_csv.drop(loaded_csv.columns[-1], axis=1)
     
@@ -109,19 +122,10 @@ class POET_IC_Solver(object):
 
     def check_alignment(self,report_misalignment):
         logger = logging.getLogger(__name__)
-        problem_counter = 0
-        retry = True
-        while retry:
-            logger.debug('Attempt %s to read %s data.csv and label.csv', problem_counter+1, self.type)
-            try:
-                data = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
-                label = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
-                retry = False
-            except:
-                problem_counter += 1
-                if problem_counter == 9:
-                    raise
-                time.sleep(120)
+        logger.debug('Reading %s data.csv', self.type)
+        data = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/data.csv", float_precision='round_trip')
+        logger.debug('Reading %s label.csv', self.type)
+        label = self._read_csv_notimestamp(f"/{self.path}/poet_output/{self.type}_{self.version}/datasets/label.csv", float_precision='round_trip')
         logger.debug('Data and label read successfully.')
         data_length = len(data.iloc[:])
         label_length = len(label.iloc[:])
