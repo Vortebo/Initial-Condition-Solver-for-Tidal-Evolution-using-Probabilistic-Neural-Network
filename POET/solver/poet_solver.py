@@ -359,6 +359,8 @@ class POET_IC_Solver(object):
             return result
         
         logger = logging.getLogger(__name__)
+
+        logger.debug('Starting fit.')
         
         if X_train is None or y_train is None:
             X_train, y_train = self.load_data()
