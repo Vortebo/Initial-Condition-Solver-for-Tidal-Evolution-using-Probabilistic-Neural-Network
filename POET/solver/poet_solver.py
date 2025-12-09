@@ -71,13 +71,13 @@ class POET_IC_Solver(object):
                     tf.config.experimental.set_memory_growth(gpu, True)
             except RuntimeError as e:
                 print(e)
-        print('IMPORTANT ML THREADS')
-        print(tf.config.threading.get_inter_op_parallelism_threads())
-        print(tf.config.threading.get_intra_op_parallelism_threads())
+        #print('IMPORTANT ML THREADS')
+        #print(tf.config.threading.get_inter_op_parallelism_threads())
+        #print(tf.config.threading.get_intra_op_parallelism_threads())
         tf.config.threading.set_inter_op_parallelism_threads(1)
         tf.config.threading.set_intra_op_parallelism_threads(1)
-        print(tf.config.threading.get_inter_op_parallelism_threads())
-        print(tf.config.threading.get_intra_op_parallelism_threads())
+        #print(tf.config.threading.get_inter_op_parallelism_threads())
+        #print(tf.config.threading.get_intra_op_parallelism_threads())
 
         #
         # start logging the output
