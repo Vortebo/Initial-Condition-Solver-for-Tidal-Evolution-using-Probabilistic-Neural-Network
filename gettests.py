@@ -51,6 +51,9 @@ def write_csv(rows, outpath):
         print("No data found. No CSV written.")
         return
     maxlen = max(len(r) for r in rows)
+    # Add a header
+    header = ['testnum','0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21']
+    rows.insert(0, header)
     with open(outpath, 'w', newline='', encoding='utf-8') as csvf:
         writer = csv.writer(csvf)
         for r in rows:
@@ -61,7 +64,11 @@ def write_csv(rows, outpath):
 def trim_to_random(rows, n=120):
     import random
     if len(rows) >+ n:
-        return random.sample(rows, n)
+        newrows = random.sample(rows, n)
+        # Number the tests
+        for i, r in enumerate(newrows):
+            r.insert(0, str(i+1))
+        return newrows
     print(f"Only {len(rows)} rows found.")
     raise ValueError("Not enough rows to trim to random sample.")
 
