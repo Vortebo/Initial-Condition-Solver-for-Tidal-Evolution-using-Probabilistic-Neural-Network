@@ -36,11 +36,11 @@ def load_tests(system):
 
     return tests
 
-def run_tests(log_likelihood, tests):
+def run_tests(log_likelihood, system, tests):
 
     setup_process(
         fname_datetime_format='%Y%m%d%H%M%S',
-        system='ztbd',
+        system='ztbd_' + str(system),
         std_out_err_fname=logpath+'{task}_new/{system}_{now}_{pid:d}.outerr',
         logging_fname=logpath+'{task}_new/{system}_{now}_{pid:d}.log',
         logging_verbosity='debug',
@@ -70,7 +70,7 @@ def main(config):
 
     # First, with ML
     log_likelihood, _ = prepare_sampling(config)
-    thefunction = partial(run_tests, log_likelihood)
+    thefunction = partial(run_tests, log_likelihood, config.system)
     _logger.info('Starting ML tests for system %s', repr(config.system))
     with Pool(processes=8) as pool:
         pool.map(thefunction, tests)
@@ -81,7 +81,7 @@ def main(config):
     # Next, without ML
     config.nn_data_dir = 'no'
     log_likelihood, _ = prepare_sampling(config)
-    thefunction = partial(run_tests, log_likelihood)
+    thefunction = partial(run_tests, log_likelihood, config.system)
     _logger.info('Starting non-ML tests for system %s', repr(config.system))
     with Pool(processes=8) as pool:
         pool.map(thefunction, tests)
