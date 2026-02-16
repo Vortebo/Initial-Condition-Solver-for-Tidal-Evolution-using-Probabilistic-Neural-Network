@@ -16,7 +16,7 @@ def extract_datetime(line):
 
 def main():
     path = '/home/jas180011/work/code/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/training_output/calculate_new/'
-    path = '/home/vortebo/ctime/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/training_output/calculate_new/'
+    #path = '/home/vortebo/ctime/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/training_output/calculate_new/'
     alllogs = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path,f))]
     alllogs = [f for f in alllogs if f.split('.')[-1]=='log']
     alllogs = [f for f in alllogs if f.split('_')[0]=='ztbd']
@@ -93,6 +93,11 @@ def main():
         # ax.set_xlabel('Test Number')
         # ax.set_title(f'{system} ML Performance')
         # plt.savefig(f'mlperf_{system}.pdf')
+    
+        if np.sum(systemstats[systemkeys[system]][0][:]==0)==0 and np.sum(systemstats[systemkeys[system]][1][:]==0)==0:
+            print(f'{system}')
+            print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
+            print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
 
     # print(systemstats)
     biggest_ml = 0

@@ -14,7 +14,7 @@ from bayesian.sample_windemuth_et_al import prepare_sampling
 def load_tests(system):
     
     alltests = pd.read_csv(
-        '/home/vortebo/ctime/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/'+str(system)+'_tests.csv'
+        '/work/jas180011/code/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/systests/'+str(system)+'_tests.csv'
     )
     keys=alltests.keys()
     # alltests=alltests.to_dict(orient='records')
@@ -65,6 +65,7 @@ def run_tests(log_likelihood, system, tests):
 def main(config):
 
     _logger = logging.getLogger(__name__)
+    _logger.debug(config)
 
     tests = load_tests(config.system)
 
@@ -88,7 +89,7 @@ def main(config):
     _logger.info('Finished non-ML tests for system %s', repr(config.system))
 
 if __name__ == '__main__':
-    logpath='/home/vortebo/ctime/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/training_output/'
+    logpath='/work/jas180011/code/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/training_output/'
     setup_process(
         fname_datetime_format='%Y%m%d%H%M%S',
         system='tbd',
