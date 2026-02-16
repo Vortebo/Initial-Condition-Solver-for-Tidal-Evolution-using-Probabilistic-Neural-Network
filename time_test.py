@@ -14,7 +14,8 @@ from bayesian.sample_windemuth_et_al import prepare_sampling
 def load_tests(system):
     
     alltests = pd.read_csv(
-        '/work/jas180011/code/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/systests/'+str(system)+'_tests.csv'
+#        '/work/jas180011/code/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/systests/'+str(system)+'_tests.csv'
+        '/home/vortebo/ctime/Initial-Condition-Solver-for-Tidal-Evolution-using-Probabilistic-Neural-Network/'+'time_tests.csv'#+str(system)+'_tests.csv'
     )
     keys=alltests.keys()
     # alltests=alltests.to_dict(orient='records')

@@ -73,6 +73,7 @@ def main():
         plt.xlabel('Time Saved (hours)')
         plt.title(f'{system} ML Performance')
         plt.savefig(f'mlperf_{system}.pdf')
+        plt.close()
     
         # times = {
         #     'With ML': systemstats[systemkeys[system]][0][:],
@@ -121,6 +122,7 @@ def main():
     plt.xlabel('Time Saved (hours)')
     plt.title('All-System ML Performance')
     plt.savefig('mlperf_all.pdf')
+    plt.close()
 
 if __name__ == '__main__':
     main()

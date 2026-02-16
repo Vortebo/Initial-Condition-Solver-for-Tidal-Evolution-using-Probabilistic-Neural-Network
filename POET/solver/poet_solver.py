@@ -103,11 +103,11 @@ class POET_IC_Solver(object):
             logger.debug('Attempt %s', problem_counter+1)
             try:
                 if float_precision is not None and ioObject is None:
-                    loaded_csv = pd.read_csv(path, float_precision=float_precision)
+                    loaded_csv = pd.read_csv(path, skiprows=lambda x: (x % 100 != 0), float_precision=float_precision)
                 elif float_precision is not None and ioObject is not None:
-                    loaded_csv = pd.read_csv(ioObject, float_precision=float_precision)
+                    loaded_csv = pd.read_csv(ioObject, skiprows=lambda x: (x % 100 != 0), float_precision=float_precision)
                 else:
-                    loaded_csv = pd.read_csv(path)
+                    loaded_csv = pd.read_csv(path, skiprows=lambda x: (x % 100 != 0))
                 retry = False
             except Exception as e:
                 logger.error('Could not read the file. Error: %s', e)
