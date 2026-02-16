@@ -34,6 +34,8 @@ def main():
     # print(systemkeys)
     # print(systemstats)
 
+    alldiffs = []
+
     for system in systems:
         relevant_logs = [f for f in alllogs if f.split('_')[1]==system]
         relevant_logs.sort()
@@ -63,26 +65,34 @@ def main():
                             systemstats[systemkeys[system]][j][test] = test_time
                             test_start = None
                             test_end = None
-    
-        times = {
-            'With ML': systemstats[systemkeys[system]][0][:],
-            'Without ML': systemstats[systemkeys[system]][1][:],
-        }
-        fig, ax = plt.subplots(layout='constrained')
-        width=0.4
-        multiplier=0
-        for attr,meas in times.items():
-            offset = width*multiplier
-            rects=ax.bar(np.arange(120)+offset,meas,width,label=attr)
-            print(np.arange(120)+offset)
-            multiplier+=1
-            # ax.bar_label(rects, padding=3)
-        # ax.set_xticks(np.arange(120)+width)
-        ax.legend()
-        ax.set_ylabel('Time (hours)')
-        ax.set_xlabel('Test Number')
-        ax.set_title(f'{system} ML Performance')
+
+        systemdiffs = systemstats[systemkeys[system]][1][:] - systemstats[systemkeys[system]][0][:]
+        alldiffs.append(systemdiffs)
+        plt.hist(systemdiffs,bins=20)
+        plt.ylabel('Number of Tests')
+        plt.xlabel('Time Saved (hours)')
+        plt.title(f'{system} ML Performance')
         plt.savefig(f'mlperf_{system}.pdf')
+    
+        # times = {
+        #     'With ML': systemstats[systemkeys[system]][0][:],
+        #     'Without ML': systemstats[systemkeys[system]][1][:],
+        # }
+        # fig, ax = plt.subplots(layout='constrained')
+        # width=0.4
+        # multiplier=0
+        # for attr,meas in times.items():
+        #     offset = width*multiplier
+        #     rects=ax.bar(np.arange(120)+offset,meas,width,label=attr)
+        #     print(np.arange(120)+offset)
+        #     multiplier+=1
+        #     # ax.bar_label(rects, padding=3)
+        # # ax.set_xticks(np.arange(120)+width)
+        # ax.legend()
+        # ax.set_ylabel('Time (hours)')
+        # ax.set_xlabel('Test Number')
+        # ax.set_title(f'{system} ML Performance')
+        # plt.savefig(f'mlperf_{system}.pdf')
 
     # print(systemstats)
     biggest_ml = 0
@@ -99,6 +109,13 @@ def main():
     #     print('no',time_notml)
     # print('ml time: ',time_ml/3600)
     # print('not ml time: ',time_notml/3600)
+
+    alldiffs = np.array(alldiffs)
+    plt.hist(alldiffs.flatten(),bins=20)
+    plt.ylabel('Number of Tests')
+    plt.xlabel('Time Saved (hours)')
+    plt.title('All-System ML Performance')
+    plt.savefig('mlperf_all.pdf')
 
 if __name__ == '__main__':
     main()
