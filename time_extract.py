@@ -117,7 +117,7 @@ def main():
     # print('not ml time: ',time_notml/3600)
 
     alldiffs = np.array(alldiffs)
-    plt.hist(alldiffs.flatten(),bins=20)
+    plt.hist(alldiffs.flatten(),bins=20,range=(-5,5))
     plt.ylabel('Number of Tests')
     plt.xlabel('Time Saved (hours)')
     plt.title('All-System ML Performance')
