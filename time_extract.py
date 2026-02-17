@@ -108,6 +108,10 @@ def main():
             
         else:
             systemstats = np.delete(systemstats,systemkeys[system],axis=0)
+            current_i = systemkeys[system]
+            for key in systemkeys:
+                if systemkeys[key]>current_i:
+                    systemkeys[key] -= 1
 
     print(systemstats)
     biggest_ml = 0
