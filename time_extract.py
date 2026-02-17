@@ -28,7 +28,7 @@ def main():
     systems = [f.split('_')[1] for f in alllogs]
     systems = list(set(systems))
     # systems=['3348093','9665503']
-    systems=['4346875']
+    systems=['3348093','4346875']
     
     systemkeys = dict([[systems[i],i] for i in range(len(systems))])
     systemstats= np.zeros((len(systems),2,120))
@@ -122,7 +122,7 @@ def main():
     # print('not ml time: ',time_notml/3600)
 
     alldiffs = np.array(alldiffs)
-    plt.hist(alldiffs.flatten(),bins=20,range=(-0.4,0.4))
+    plt.hist(alldiffs.flatten(),bins=20)
     plt.ylabel('Number of Tests')
     plt.xlabel('Time Saved (hours)')
     plt.title('All-System ML Performance')
