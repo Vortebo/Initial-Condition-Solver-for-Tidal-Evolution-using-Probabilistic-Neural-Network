@@ -28,6 +28,7 @@ def main():
     systems = [f.split('_')[1] for f in alllogs]
     systems = list(set(systems))
     # systems=['3348093','9665503']
+    systems=['4346875']
     
     systemkeys = dict([[systems[i],i] for i in range(len(systems))])
     systemstats= np.zeros((len(systems),2,120))
@@ -72,7 +73,7 @@ def main():
         plt.ylabel('Number of Tests')
         plt.xlabel('Time Saved (hours)')
         plt.title(f'{system} ML Performance')
-        plt.savefig(f'mlperf_{system}.pdf')
+        plt.savefig(f'{system}_mlperf.pdf')
         plt.close()
     
         times = {
@@ -85,7 +86,7 @@ def main():
         for attr,meas in times.items():
             offset = width*multiplier
             rects=ax.bar(np.arange(120)+offset,meas,width,label=attr)
-            print(np.arange(120)+offset)
+            #print(np.arange(120)+offset)
             multiplier+=1
             # ax.bar_label(rects, padding=3)
         # ax.set_xticks(np.arange(120)+width)
@@ -93,7 +94,7 @@ def main():
         ax.set_ylabel('Time (hours)')
         ax.set_xlabel('Test Number')
         ax.set_title(f'{system} ML Performance')
-        plt.savefig(f'mllots_{system}.pdf')
+        plt.savefig(f'{system}_mllots.pdf')
         plt.close()
     
         if np.sum(systemstats[systemkeys[system]][0][:]==0)==0 and np.sum(systemstats[systemkeys[system]][1][:]==0)==0:
@@ -101,7 +102,7 @@ def main():
             print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
             print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
 
-    # print(systemstats)
+    print(systemstats)
     biggest_ml = 0
     biggest_no = 0
     for i in range(8):
@@ -118,11 +119,11 @@ def main():
     # print('not ml time: ',time_notml/3600)
 
     alldiffs = np.array(alldiffs)
-    plt.hist(alldiffs.flatten(),bins=20,range=(-5,5))
+    plt.hist(alldiffs.flatten(),bins=20,range=(-0.4,0.4))
     plt.ylabel('Number of Tests')
     plt.xlabel('Time Saved (hours)')
     plt.title('All-System ML Performance')
-    plt.savefig('mlperf_all.pdf')
+    plt.savefig('all_mlperf.pdf')
     plt.close()
 
 if __name__ == '__main__':
