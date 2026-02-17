@@ -28,7 +28,7 @@ def main():
     systems = [f.split('_')[1] for f in alllogs]
     systems = list(set(systems))
     # systems=['3348093','9665503']
-    systems=['3348093','4346875']
+    # systems=['3348093','4346875']
     
     systemkeys = dict([[systems[i],i] for i in range(len(systems))])
     systemstats= np.zeros((len(systems),2,120))
@@ -81,20 +81,24 @@ def main():
                 'With ML': systemstats[systemkeys[system]][0][:],
                 'Without ML': systemstats[systemkeys[system]][1][:],
             }
-            fig, ax = plt.subplots(layout='constrained')
+            # fig, ax = plt.subplots(layout='constrained')
             width=0.4
-            multiplier=0
-            for attr,meas in times.items():
-                offset = width*multiplier
-                rects=ax.bar(np.arange(120)+offset,meas,width,label=attr)
-                #print(np.arange(120)+offset)
-                multiplier+=1
-                # ax.bar_label(rects, padding=3)
-            # ax.set_xticks(np.arange(120)+width)
-            ax.legend()
-            ax.set_ylabel('Time (hours)')
-            ax.set_xlabel('Test Number')
-            ax.set_title(f'{system} ML Performance')
+            # multiplier=0
+            # for attr,meas in times.items():
+            #     offset = width*multiplier
+            #     rects=ax.bar(np.arange(120)+offset,meas,width,label=attr)
+            #     #print(np.arange(120)+offset)
+            #     multiplier+=1
+            #     # ax.bar_label(rects, padding=3)
+            # # ax.set_xticks(np.arange(120)+width)
+            # ax.legend()
+            # ax.set_ylabel('Time (hours)')
+            # ax.set_xlabel('Test Number')
+            # ax.set_title(f'{system} ML Performance')
+            plt.bar(np.arange(120),systemdiffs,width*2)
+            plt.ylabel('Time Saved (hours)')
+            plt.xlabel('Test Number')
+            plt.title(f'{system} ML Performance')
             plt.savefig(f'{system}_mllots.pdf')
             plt.close()
     
