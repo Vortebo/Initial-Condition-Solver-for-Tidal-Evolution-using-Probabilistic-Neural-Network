@@ -105,6 +105,10 @@ def main():
             #print(f'{system}')
             #print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
             #print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
+            print(f'{system}')
+            print('Average ML time: ',np.sum(systemstats[systemkeys[system]][0][:])/120)
+            print('Average not ML time: ',np.sum(systemstats[systemkeys[system]][1][:])/120)
+            print('Average time saved: ',np.sum(systemstats[systemkeys[system]][1][:])/120 - np.sum(systemstats[systemkeys[system]][0][:])/120)
             
         else:
             print(f'deleting {system}')
@@ -129,10 +133,6 @@ def main():
     #     print('no',time_notml)
     # print('ml time: ',time_ml/3600)
     # print('not ml time: ',time_notml/3600)
-    print(f'{system}')
-    print('Average ML time: ',np.sum(systemstats[systemkeys[system]][0][:])/120)
-    print('Average not ML time: ',np.sum(systemstats[systemkeys[system]][1][:])/120)
-    print('Average time saved: ',np.sum(systemstats[systemkeys[system]][1][:])/120 - np.sum(systemstats[systemkeys[system]][0][:])/120)
 
     alldiffs = np.array(alldiffs)
     plt.hist(alldiffs.flatten(),bins=20,range=(-1,1))
