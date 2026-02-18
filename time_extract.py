@@ -102,18 +102,19 @@ def main():
             plt.savefig(f'{system}_mllots.pdf')
             plt.close()
     
-            print(f'{system}')
-            print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
-            print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
+            #print(f'{system}')
+            #print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
+            #print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
             
         else:
+            print(f'deleting {system}')
             systemstats = np.delete(systemstats,systemkeys[system],axis=0)
             current_i = systemkeys[system]
             for key in systemkeys:
                 if systemkeys[key]>current_i:
                     systemkeys[key] -= 1
 
-    print(systemstats)
+    #print(systemstats)
     biggest_ml = 0
     biggest_no = 0
     for i in range(8):
@@ -130,7 +131,7 @@ def main():
     # print('not ml time: ',time_notml/3600)
 
     alldiffs = np.array(alldiffs)
-    plt.hist(alldiffs.flatten(),bins=20)
+    plt.hist(alldiffs.flatten(),bins=20,range=(-1,1))
     plt.ylabel('Number of Tests')
     plt.xlabel('Time Saved (hours)')
     plt.title('All-System ML Performance')
