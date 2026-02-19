@@ -102,13 +102,14 @@ def main():
             plt.savefig(f'{system}_mllots.pdf')
             plt.close()
     
+            if system in ['9665503','9775253','9881258','9892471','9971475']:
+                print(f'{system}')
+                print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
+                print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
             #print(f'{system}')
-            #print('Total ML time: ',np.sum(systemstats[systemkeys[system]][0][:]))
-            #print('Total not ML time: ',np.sum(systemstats[systemkeys[system]][1][:]))
-            print(f'{system}')
-            print('Average ML time: ',np.sum(systemstats[systemkeys[system]][0][:])/120)
-            print('Average not ML time: ',np.sum(systemstats[systemkeys[system]][1][:])/120)
-            print('Average time saved: ',np.sum(systemstats[systemkeys[system]][1][:])/120 - np.sum(systemstats[systemkeys[system]][0][:])/120)
+            #print('Average ML time: ',np.sum(systemstats[systemkeys[system]][0][:])/120)
+            #print('Average not ML time: ',np.sum(systemstats[systemkeys[system]][1][:])/120)
+            #print('Average time saved: ',np.sum(systemstats[systemkeys[system]][1][:])/120 - np.sum(systemstats[systemkeys[system]][0][:])/120)
             
         else:
             print(f'deleting {system}')
